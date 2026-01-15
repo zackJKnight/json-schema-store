@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "json-schema-store-client": "file:../ts-client"
+    "json-schema-store-client": "file:../../ts-client"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

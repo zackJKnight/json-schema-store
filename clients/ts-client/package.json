@@ -8,7 +8,7 @@
   "files": ["dist"],
   "scripts": {
     "generate": "openapi --input ../../openapi.json --output src --client fetch --useOptions --exportSchemas true --name JsonSchemaApiClient --indent 2",
-    "build": "npm run generate && tsc -p tsconfig.json",
+    "build": "npm run generate && tsc -p tsconfig.json && node ./scripts/fix-extensions.mjs",
     "prepare": "npm run build"
   },
   "devDependencies": {

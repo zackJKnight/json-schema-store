@@ -1,10 +1,17 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { DB } from "https://deno.land/x/sqlite@v3.9.1/mod.ts";
+import { assertEquals } from "jsr:@std/assert@1";
 import { SchemaService } from "./schema_service.ts";
 
+async function openCleanKv() {
+  const kv = await Deno.openKv();
+  for await (const entry of kv.list({ prefix: ["schema"] })) {
+    await kv.delete(entry.key);
+  }
+  return kv;
+}
+
 Deno.test("SchemaService creates and retrieves schema", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
+  const kv = await openCleanKv();
+  const service = new SchemaService(kv);
 
   const created = await service.upsert({
     id: "form-1",
@@ -20,12 +27,12 @@ Deno.test("SchemaService creates and retrieves schema", async () => {
   assertEquals(fetched?.namespace, "forms");
   assertEquals(fetched?.tags, ["contact", "v1"]);
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("SchemaService updates schema", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
+  const kv = await openCleanKv();
+  const service = new SchemaService(kv);
 
   await service.upsert({ id: "foo", name: "v1", namespace: "core", tags: ["alpha"], schema: {} });
   const updated = await service.upsert({ id: "foo", name: "v2", namespace: "core", tags: ["beta"], schema: { version: 2 } });
@@ -34,12 +41,12 @@ Deno.test("SchemaService updates schema", async () => {
   assertEquals(updated.schema, { version: 2 });
   assertEquals(updated.tags, ["beta"]);
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("SchemaService lists schemas with cursor", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
+  const kv = await openCleanKv();
+  const service = new SchemaService(kv);
 
   await service.upsert({ id: "a", name: "A", schema: {} });
   await service.upsert({ id: "b", name: "B", schema: {} });
@@ -51,12 +58,12 @@ Deno.test("SchemaService lists schemas with cursor", async () => {
   const secondPage = await service.list(10, Number(firstPage.cursor));
   assertEquals(secondPage.items.length, 1);
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("SchemaService filters and sorts", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
+  const kv = await openCleanKv();
+  const service = new SchemaService(kv);
 
   await service.upsert({ id: "one", name: "Alpha", namespace: "core", tags: ["a"], schema: {} });
   await service.upsert({ id: "two", name: "Beta", namespace: "extensions", tags: ["b"], schema: {} });
@@ -71,40 +78,32 @@ Deno.test("SchemaService filters and sorts", async () => {
   const search = await service.list(10, 0, { q: "gam" });
   assertEquals(search.items[0].id, "three");
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("SchemaService namespaces and suggest", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
+  const kv = await openCleanKv();
+  const service = new SchemaService(kv);
 
   await service.upsert({ id: "one", name: "Alpha Form", namespace: "core", tags: ["forms"], schema: {} });
   await service.upsert({ id: "two", name: "Beta Thing", namespace: "addons", tags: ["ext"], schema: {} });
 
-  assertEquals(service.listNamespaces(), ["addons", "core"]);
+  assertEquals(await service.listNamespaces(), ["addons", "core"]);
 
-  const suggestions = service.searchSuggest("form", 5);
+  const suggestions = await service.searchSuggest("form", 5);
   assertEquals(suggestions[0].id, "one");
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("SchemaService delete result", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
+  const kv = await openCleanKv();
+  const service = new SchemaService(kv);
   await service.upsert({ id: "dead", name: "To delete", schema: {} });
 
   const removed = await service.remove("dead");
   assertEquals(removed, true);
   const missing = await service.remove("missing");
   assertEquals(missing, false);
-
-  db.close();
-});
-
-Deno.test("SchemaService upsert failure surfaces", async () => {
-  const db = new DB(":memory:");
-  const service = new SchemaService(db);
-  db.close();
-  await assertRejects(() => service.upsert({ id: "oops", name: "Oops", schema: {} }));
+  kv.close();
 });

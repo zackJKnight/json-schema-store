@@ -1,24 +1,12 @@
-import { DB } from "https://deno.land/x/sqlite@v3.9.1/mod.ts";
 import { SchemaInput, SchemaRecord } from "./types.ts";
 
-export class SchemaService {
-  #db: DB;
+type StoredSchema = SchemaRecord;
 
-  constructor(db: DB) {
-    this.#db = db;
-    this.#db.execute(`
-      CREATE TABLE IF NOT EXISTS schemas (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        namespace TEXT,
-        tags_json TEXT,
-        schema_json TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-    `);
-    this.#ensureColumns();
+export class SchemaService {
+  #kv: Deno.Kv;
+
+  constructor(kv: Deno.Kv) {
+    this.#kv = kv;
   }
 
   async list(
@@ -26,179 +14,77 @@ export class SchemaService {
     offset: number,
     filters: { q?: string; namespace?: string; tag?: string; sort?: "updatedAt" | "name" } = {},
   ): Promise<{ items: SchemaRecord[]; cursor: string | null }> {
-    const clauses: string[] = [];
-      const params: Array<string | number | bigint | null> = [];
-
-    if (filters.q) {
-      const like = `%${filters.q.toLowerCase()}%`;
-      clauses.push("(lower(name) LIKE ? OR lower(description) LIKE ?)");
-      params.push(like, like);
+    const all: SchemaRecord[] = [];
+    for await (const entry of this.#kv.list<StoredSchema>({ prefix: ["schema"] })) {
+      all.push(entry.value);
     }
 
-    if (filters.namespace) {
-      clauses.push("namespace = ?");
-      params.push(filters.namespace);
-    }
+    const filtered = all.filter((item) => this.#matchesFilters(item, filters));
+    const sorted = filters.sort === "name"
+      ? filtered.sort((a, b) => a.name.localeCompare(b.name))
+      : filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
-    if (filters.tag) {
-      clauses.push("tags_json LIKE ?");
-      params.push(`%\"${filters.tag}\"%`);
-    }
-
-    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const order = filters.sort === "name" ? "ORDER BY name COLLATE NOCASE ASC" : "ORDER BY updated_at DESC";
-
-    const rows = this.#db.queryEntries<{
-      id: string;
-      name: string;
-      description: string | null;
-      namespace: string | null;
-      tags_json: string | null;
-      schema_json: string;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT id, name, description, namespace, tags_json, schema_json, created_at, updated_at
-       FROM schemas
-       ${where}
-       ${order}
-       LIMIT ? OFFSET ?`,
-      [...params, limit, offset],
-    );
-
-    const items: SchemaRecord[] = rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description ?? undefined,
-      namespace: row.namespace ?? undefined,
-      tags: row.tags_json ? (JSON.parse(row.tags_json) as string[]) : undefined,
-      schema: JSON.parse(row.schema_json) as Record<string, unknown>,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
-
-    const nextCursor = rows.length === limit ? String(offset + limit) : null;
-    return { items, cursor: nextCursor };
+    const slice = sorted.slice(offset, offset + limit);
+    const nextCursor = sorted.length > offset + limit ? String(offset + limit) : null;
+    return { items: slice, cursor: nextCursor };
   }
 
   async get(id: string): Promise<SchemaRecord | null> {
-    const rows = this.#db.queryEntries<{
-      id: string;
-      name: string;
-      description: string | null;
-      namespace: string | null;
-      tags_json: string | null;
-      schema_json: string;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT id, name, description, namespace, tags_json, schema_json, created_at, updated_at FROM schemas WHERE id = ?`,
-      [id],
-    );
-
-    const row = rows.at(0);
-    if (!row) return null;
-
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description ?? undefined,
-      namespace: row.namespace ?? undefined,
-      tags: row.tags_json ? (JSON.parse(row.tags_json) as string[]) : undefined,
-      schema: JSON.parse(row.schema_json) as Record<string, unknown>,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    const res = await this.#kv.get<StoredSchema>(["schema", id]);
+    return res.value ?? null;
   }
 
   async upsert(input: SchemaInput): Promise<SchemaRecord> {
     const now = new Date().toISOString();
     const existing = await this.get(input.id);
-    const tagsJson = input.tags ? JSON.stringify(input.tags) : null;
-
-    if (existing) {
-      this.#db.query(
-        `UPDATE schemas SET name = ?, description = ?, namespace = ?, tags_json = ?, schema_json = ?, updated_at = ? WHERE id = ?`,
-        [
-          input.name,
-          input.description ?? null,
-          input.namespace ?? null,
-          tagsJson,
-          JSON.stringify(input.schema),
-          now,
-          input.id,
-        ],
-      );
-      return { ...existing, ...input, updatedAt: now };
-    }
-
-    const createdAt = now;
-    this.#db.query(
-      `INSERT INTO schemas (id, name, description, namespace, tags_json, schema_json, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        input.id,
-        input.name,
-        input.description ?? null,
-        input.namespace ?? null,
-        tagsJson,
-        JSON.stringify(input.schema),
-        createdAt,
-        now,
-      ],
-    );
-
-    return { ...input, createdAt, updatedAt: now };
+    const record: SchemaRecord = {
+      ...input,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    await this.#kv.set(["schema", input.id], record);
+    return record;
   }
 
   async remove(id: string): Promise<boolean> {
-    this.#db.query(`DELETE FROM schemas WHERE id = ?`, [id]);
-    return this.#db.changes > 0;
+    const existing = await this.#kv.get<StoredSchema>(["schema", id]);
+    if (!existing.value) return false;
+    await this.#kv.delete(["schema", id]);
+    return true;
   }
 
-  listNamespaces(): string[] {
-    const rows = this.#db.queryEntries<{ namespace: string }>(
-      `SELECT DISTINCT namespace FROM schemas WHERE namespace IS NOT NULL AND namespace != '' ORDER BY namespace COLLATE NOCASE ASC`,
-    );
-    return rows.map((row) => row.namespace);
-  }
-
-  searchSuggest(q: string, limit: number): Array<Pick<SchemaRecord, "id" | "name" | "namespace" | "description" | "updatedAt">> {
-    const like = `%${q.toLowerCase()}%`;
-    const rows = this.#db.queryEntries<{
-      id: string;
-      name: string;
-      description: string | null;
-      namespace: string | null;
-      updated_at: string;
-    }>(
-      `SELECT id, name, description, namespace, updated_at
-       FROM schemas
-       WHERE lower(name) LIKE ? OR lower(description) LIKE ?
-       ORDER BY updated_at DESC
-       LIMIT ?`,
-      [like, like, limit],
-    );
-
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description ?? undefined,
-      namespace: row.namespace ?? undefined,
-      updatedAt: row.updated_at,
-    }));
-  }
-
-  #ensureColumns() {
-    const rows = this.#db.queryEntries<{ name: string }>(`PRAGMA table_info(schemas)`);
-    const names = new Set(rows.map((row) => row.name));
-
-    if (!names.has("namespace")) {
-      this.#db.execute("ALTER TABLE schemas ADD COLUMN namespace TEXT");
+  async listNamespaces(): Promise<string[]> {
+    const namespaces = new Set<string>();
+    for await (const entry of this.#kv.list<StoredSchema>({ prefix: ["schema"] })) {
+      if (entry.value.namespace) namespaces.add(entry.value.namespace);
     }
+    return Array.from(namespaces).sort((a, b) => a.localeCompare(b));
+  }
 
-    if (!names.has("tags_json")) {
-      this.#db.execute("ALTER TABLE schemas ADD COLUMN tags_json TEXT");
+  async searchSuggest(
+    q: string,
+    limit: number,
+  ): Promise<Array<Pick<SchemaRecord, "id" | "name" | "namespace" | "description" | "updatedAt">>> {
+    const term = q.toLowerCase();
+    const hits: Array<Pick<SchemaRecord, "id" | "name" | "namespace" | "description" | "updatedAt">> = [];
+    for await (const entry of this.#kv.list<StoredSchema>({ prefix: ["schema"] })) {
+      const v = entry.value;
+      if (v.name.toLowerCase().includes(term) || (v.description ?? "").toLowerCase().includes(term)) {
+        hits.push({ id: v.id, name: v.name, description: v.description, namespace: v.namespace, updatedAt: v.updatedAt });
+      }
     }
+    return hits
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, limit);
+  }
+
+  #matchesFilters(record: SchemaRecord, filters: { q?: string; namespace?: string; tag?: string }): boolean {
+    if (filters.namespace && record.namespace !== filters.namespace) return false;
+    if (filters.tag && !(record.tags ?? []).includes(filters.tag)) return false;
+    if (filters.q) {
+      const term = filters.q.toLowerCase();
+      if (!record.name.toLowerCase().includes(term) && !(record.description ?? "").toLowerCase().includes(term)) return false;
+    }
+    return true;
   }
 }

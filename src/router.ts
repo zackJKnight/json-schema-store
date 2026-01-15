@@ -1,4 +1,3 @@
-import { DB } from "https://deno.land/x/sqlite@v3.9.1/mod.ts";
 import * as jsonpatch from "npm:fast-json-patch@3.1.1";
 import openapiSpec from "../openapi.json" with { type: "json" };
 import { HttpError, handleError, jsonResponse } from "./http_error.ts";
@@ -8,41 +7,50 @@ import { parseJsonBody, validateSchemaPayload } from "./validation.ts";
 
 //
 
-export function createApp(db: DB) {
-  const service = new SchemaService(db);
+export function createApp(kv: Deno.Kv) {
+  const service = new SchemaService(kv);
+  const corsHeaders = new Headers({
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    "access-control-allow-headers": "content-type,if-match",
+  });
 
   return async function handler(req: Request): Promise<Response> {
     try {
+      if (req.method === "OPTIONS") {
+        return withCors(new Response(null, { status: 204 }), corsHeaders);
+      }
+
       const url = new URL(req.url);
 
       if (url.pathname === "/health" && req.method === "GET") {
-        return jsonResponse({ ok: true, timestamp: new Date().toISOString() });
+        return withCors(jsonResponse({ ok: true, timestamp: new Date().toISOString() }), corsHeaders);
       }
 
       if (url.pathname === "/openapi.json" && req.method === "GET") {
-        return jsonResponse(openapiSpec);
+        return withCors(jsonResponse(openapiSpec), corsHeaders);
       }
 
       if (url.pathname === "/docs" && req.method === "GET") {
-        return new Response(swaggerHtml, {
+        return withCors(new Response(swaggerHtml, {
           status: 200,
           headers: {
             "content-type": "text/html; charset=utf-8",
           },
-        });
+        }), corsHeaders);
       }
 
       if (url.pathname === "/namespaces" && req.method === "GET") {
-        const namespaces = service.listNamespaces();
-        return jsonResponse({ items: namespaces });
+        const namespaces = await service.listNamespaces();
+        return withCors(jsonResponse({ items: namespaces }), corsHeaders);
       }
 
       if (url.pathname === "/schemas/suggest" && req.method === "GET") {
         const q = url.searchParams.get("q")?.trim();
         if (!q) throw new HttpError(400, "q is required");
         const limit = parseLimit(url.searchParams.get("limit"), 10);
-        const suggestions = service.searchSuggest(q, limit);
-        return jsonResponse({ items: suggestions });
+        const suggestions = await service.searchSuggest(q, limit);
+        return withCors(jsonResponse({ items: suggestions }), corsHeaders);
       }
 
       if (url.pathname === "/schemas" && req.method === "GET") {
@@ -53,7 +61,7 @@ export function createApp(db: DB) {
         const tag = url.searchParams.get("tag")?.trim();
         const sort = parseSort(url.searchParams.get("sort"));
         const result = await service.list(limit, cursor, { q: q || undefined, namespace: namespace || undefined, tag: tag || undefined, sort });
-        return jsonResponse(result);
+        return withCors(jsonResponse(result), corsHeaders);
       }
 
       if (url.pathname === "/schemas" && req.method === "POST") {
@@ -67,7 +75,7 @@ export function createApp(db: DB) {
           throw new HttpError(409, "Schema already exists", { id });
         }
         const created = await service.upsert({ ...payload, id });
-        return jsonResponse(created, 201);
+        return withCors(jsonResponse(created, 201), corsHeaders);
       }
 
       const parts = url.pathname.split("/").filter(Boolean);
@@ -81,13 +89,13 @@ export function createApp(db: DB) {
           if (!pointer) throw new HttpError(400, "pointer query param is required");
           const value = getByPointer(schema.schema, pointer);
           if (value === undefined) throw new HttpError(404, "Pointer not found", { pointer });
-          return jsonResponse({ pointer, value });
+          return withCors(jsonResponse({ pointer, value }), corsHeaders);
         }
 
         if (req.method === "GET") {
           const found = await service.get(id);
           if (!found) throw new HttpError(404, "Schema not found", { id });
-          return jsonResponse(found, 200, { etag: found.updatedAt });
+          return withCors(jsonResponse(found, 200, { etag: found.updatedAt }), corsHeaders);
         }
 
         if (req.method === "PUT") {
@@ -97,7 +105,7 @@ export function createApp(db: DB) {
           await ensureValidJsonSchema(payload.schema);
           const existing = await service.get(id);
           const saved = await service.upsert({ ...payload, id });
-          return jsonResponse(saved, existing ? 200 : 201);
+          return withCors(jsonResponse(saved, existing ? 200 : 201), corsHeaders);
         }
 
         if (req.method === "PATCH") {
@@ -150,13 +158,13 @@ export function createApp(db: DB) {
             tags: resolveTags(nextRecord, existing.tags),
             schema: nextSchema,
           });
-          return jsonResponse(saved, 200, { etag: saved.updatedAt });
+          return withCors(jsonResponse(saved, 200, { etag: saved.updatedAt }), corsHeaders);
         }
 
         if (req.method === "DELETE") {
           const removed = await service.remove(id);
           if (!removed) throw new HttpError(404, "Schema not found", { id });
-          return jsonResponse({ deleted: true });
+          return withCors(jsonResponse({ deleted: true }), corsHeaders);
         }
 
         if (req.method === "POST" && parts[2] === "validate") {
@@ -165,15 +173,23 @@ export function createApp(db: DB) {
           const schema = await service.get(id);
           if (!schema) throw new HttpError(404, "Schema not found", { id });
           const result = await validateDataAgainstSchema(schema.schema, body);
-          return jsonResponse(result, result.valid ? 200 : 422);
+          return withCors(jsonResponse(result, result.valid ? 200 : 422), corsHeaders);
         }
       }
 
       throw new HttpError(404, "Route not found");
     } catch (err) {
-      return handleError(err);
+      return withCors(handleError(err), corsHeaders);
     }
   };
+}
+
+function withCors(res: Response, cors: Headers): Response {
+  const headers = new Headers(res.headers);
+  cors.forEach((value, key) => {
+    headers.set(key, value);
+  });
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 
 function parseLimit(raw: string | null, defaultValue = 20): number {

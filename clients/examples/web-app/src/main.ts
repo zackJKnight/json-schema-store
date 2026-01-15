@@ -1,8 +1,8 @@
 import "./style.css";
-import { JsonSchemaApiClient, SchemasService } from "json-schema-store-client";
+import { JsonSchemaApiClient } from "json-schema-store-client";
 
-const apiBase = localStorage.getItem("apiBase") || "http://localhost:8000";
-const client = new JsonSchemaApiClient({ baseUrl: apiBase });
+const defaultBase = "https://deno-api-zk.deno.dev";
+const apiBase = localStorage.getItem("apiBase") || defaultBase;
 
 const baseInput = document.querySelector<HTMLInputElement>("#api-base")!;
 const listButton = document.querySelector<HTMLButtonElement>("#fetch")!;
@@ -12,18 +12,19 @@ const statusEl = document.querySelector<HTMLSpanElement>("#status")!;
 baseInput.value = apiBase;
 
 listButton.addEventListener("click", async () => {
-  const baseUrl = baseInput.value.trim() || "http://localhost:8000";
-  localStorage.setItem("apiBase", baseUrl);
-  statusEl.textContent = "Loading...";
-  output.innerHTML = "";
+  const baseUrl = baseInput.value.trim() || defaultBase;
+  localStorage.setItem('apiBase', baseUrl);
+  statusEl.textContent = 'Loading...';
+  output.innerHTML = '';
 
   try {
-    const list = await SchemasService.schemasControllerGetSchemas({ limit: 10 }, { baseUrl });
+    const client = new JsonSchemaApiClient({ BASE: baseUrl });
+    const list = await client.default.getSchemas({ limit: 10 });
     statusEl.textContent = `Loaded ${list.items.length} schemas`;
     output.append(...list.items.map(renderCard));
   } catch (err) {
     console.error(err);
-    statusEl.textContent = "Request failed";
+    statusEl.textContent = 'Request failed';
     output.innerHTML = `<div class="error">${(err as Error).message}</div>`;
   }
 });

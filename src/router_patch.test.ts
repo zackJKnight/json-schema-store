@@ -1,14 +1,21 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { DB } from "https://deno.land/x/sqlite@v3.9.1/mod.ts";
 import { createApp } from "./router.ts";
 
 function json(body: unknown): string {
   return JSON.stringify(body);
 }
 
+async function openCleanKv() {
+  const kv = await Deno.openKv();
+  for await (const entry of kv.list({ prefix: ["schema"] })) {
+    await kv.delete(entry.key);
+  }
+  return kv;
+}
+
 Deno.test("PATCH merge-patch updates schema and respects validation", async () => {
-  const db = new DB(":memory:");
-  const handler = createApp(db);
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
 
   const createRes = await handler(new Request("http://localhost/schemas", {
     method: "POST",
@@ -27,12 +34,12 @@ Deno.test("PATCH merge-patch updates schema and respects validation", async () =
   const patched = await patchRes.json();
   assertEquals(patched.schema.properties.title.minLength, 3);
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("PATCH json-patch adds property", async () => {
-  const db = new DB(":memory:");
-  const handler = createApp(db);
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
 
   const createRes = await handler(new Request("http://localhost/schemas", {
     method: "POST",
@@ -53,12 +60,12 @@ Deno.test("PATCH json-patch adds property", async () => {
   const patched = await patchRes.json();
   assertEquals(patched.schema.properties.age.type, "integer");
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("GET fragment returns pointer value", async () => {
-  const db = new DB(":memory:");
-  const handler = createApp(db);
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
 
   const createRes = await handler(new Request("http://localhost/schemas", {
     method: "POST",
@@ -72,12 +79,12 @@ Deno.test("GET fragment returns pointer value", async () => {
   const fragment = await fragRes.json();
   assertEquals(fragment.value.type, "string");
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("PATCH fails on ETag mismatch", async () => {
-  const db = new DB(":memory:");
-  const handler = createApp(db);
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
 
   const createRes = await handler(new Request("http://localhost/schemas", {
     method: "POST",
@@ -93,12 +100,12 @@ Deno.test("PATCH fails on ETag mismatch", async () => {
   }));
   assertEquals(res.status, 412);
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("Discovery endpoints list namespaces and filter", async () => {
-  const db = new DB(":memory:");
-  const handler = createApp(db);
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
 
   await handler(new Request("http://localhost/schemas", {
     method: "POST",
@@ -123,12 +130,12 @@ Deno.test("Discovery endpoints list namespaces and filter", async () => {
   assertEquals(filtered.items.length, 1);
   assertEquals(filtered.items[0].id, "forms");
 
-  db.close();
+  kv.close();
 });
 
 Deno.test("Suggest endpoint returns matches", async () => {
-  const db = new DB(":memory:");
-  const handler = createApp(db);
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
 
   await handler(new Request("http://localhost/schemas", {
     method: "POST",
@@ -141,5 +148,5 @@ Deno.test("Suggest endpoint returns matches", async () => {
   const suggestions = await suggestRes.json();
   assertEquals(suggestions.items[0].id, "searchable");
 
-  db.close();
+  kv.close();
 });

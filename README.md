@@ -32,6 +32,28 @@ or with watch mode via tasks:
 deno task dev
 ```
 
+Sample schemas seed automatically when running the dev task (`SEED_SAMPLES=1`). To disable, set `SEED_SAMPLES=0`. You can also seed on a one-off run with:
+
+```sh
+SEED_SAMPLES=1 deno task start
+```
+
+## TypeScript client + sample app
+
+- Generated client lives at `clients/ts-client` (fetch-based). Regenerate with:
+
+```sh
+cd clients/ts-client && npm run build
+```
+
+- Sample web app that consumes the client: `clients/examples/web-app`
+
+```sh
+cd clients/examples/web-app
+npm install
+npm run dev  # runs Vite; set API base in the UI (defaults to http://localhost:8000)
+```
+
 Set `PORT` to override the default 8000. Set `DB_PATH` to control where the SQLite file lives (defaults to `./data/schemas.db`). Use `:memory:` for ephemeral runs.
 
 ## Testing

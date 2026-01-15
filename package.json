@@ -1,0 +1,11 @@
+{
+  "name": "deno-api",
+  "private": true,
+  "scripts": {
+    "prepare": "husky install",
+    "gen-client": "cd clients/ts-client && npm run build"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3"
+  }
+}

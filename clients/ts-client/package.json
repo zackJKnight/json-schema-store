@@ -1,0 +1,19 @@
+{
+  "name": "json-schema-store-client",
+  "version": "0.1.0",
+  "description": "TypeScript client for the JSON Schema Store API (fetch-based).",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "generate": "openapi --input ../../openapi.json --output src --client fetch --useOptions --exportSchemas true --name JsonSchemaApiClient --indent 2",
+    "build": "npm run generate && tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "openapi-typescript-codegen": "^0.29.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.5"
+  }
+}

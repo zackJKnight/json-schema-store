@@ -27,7 +27,7 @@ export class SchemaService {
     filters: { q?: string; namespace?: string; tag?: string; sort?: "updatedAt" | "name" } = {},
   ): Promise<{ items: SchemaRecord[]; cursor: string | null }> {
     const clauses: string[] = [];
-    const params: unknown[] = [];
+      const params: Array<string | number | bigint | null> = [];
 
     if (filters.q) {
       const like = `%${filters.q.toLowerCase()}%`;

@@ -1,9 +1,10 @@
 {
   "tasks": {
-    "dev": "deno run --watch --allow-net --allow-read --allow-write --allow-env mod.ts",
+    "dev": "SEED_SAMPLES=1 DENO_ENV=development deno run --watch --allow-net --allow-read --allow-write --allow-env mod.ts",
     "start": "deno run --allow-net --allow-read --allow-write --allow-env mod.ts",
     "test": "deno test --allow-read --allow-write --allow-net --allow-env"
   },
+  "nodeModulesDir": "auto",
   "fmt": {
     "lineWidth": 100,
     "indentWidth": 2

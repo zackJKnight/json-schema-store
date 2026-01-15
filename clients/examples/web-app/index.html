@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSON Schema Store Demo</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>JSON Schema Store Demo</h1>
+        <div class="controls">
+          <input id="api-base" placeholder="API base (http://localhost:8000)" />
+          <button id="fetch" type="button">Fetch Schemas</button>
+        </div>
+      </header>
+      <div class="status">Status: <span id="status">Idle</span></div>
+      <div id="output" class="grid"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,156 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"task",
+				"test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"task",
+				"test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"task",
+				"test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"task",
+				"test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"task",
+				"test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"task",
+				"test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test",
+			"type": "shell",
+			"command": "deno",
+			"args": [
+				"test",
+				"--allow-read",
+				"--allow-write",
+				"--allow-net",
+				"--allow-env"
+			],
+			"isBackground": false
+		}
+	]
+}

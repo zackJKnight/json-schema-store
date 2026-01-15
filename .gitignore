@@ -1,0 +1,4 @@
+deno_kv.sqlite
+data/
+.db
+.env

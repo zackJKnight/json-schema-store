@@ -1,0 +1,505 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "JSON Schema API",
+    "version": "1.0.0",
+    "description": "Serve and manage JSON schemas for a WYSIWYG UI builder."
+  },
+  "servers": [
+    { "url": "http://localhost:8000" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  },
+                  "required": ["ok", "timestamp"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schemas": {
+      "get": {
+        "summary": "List schemas",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "required": false
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 0 },
+            "required": false
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": { "type": "string" },
+            "required": false,
+            "description": "Full-text match on name or description"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "schema": { "type": "string" },
+            "required": false
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": { "type": "string" },
+            "required": false
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["updatedAt", "name"] },
+            "required": false,
+            "description": "Sort by updatedAt (default) or name"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of schemas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Schema" }
+                    },
+                    "cursor": { "type": ["string", "null"] }
+                  },
+                  "required": ["items", "cursor"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create schema",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NewSchema" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Schema" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/schemas/suggest": {
+      "get": {
+        "summary": "Suggest schemas by query",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Suggestion" }
+                    }
+                  },
+                  "required": ["items"]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/namespaces": {
+      "get": {
+        "summary": "List available namespaces",
+        "responses": {
+          "200": {
+            "description": "Namespaces",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "required": ["items"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schemas/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "get": {
+        "summary": "Get schema",
+        "responses": {
+          "200": {
+            "description": "Schema",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Schema" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "summary": "Create or update schema",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NewSchemaRequiredId" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Schema" }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Schema" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      },
+      "patch": {
+        "summary": "Patch schema (JSON Merge Patch or JSON Patch)",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Optional precondition; must match current ETag (updatedAt)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": { "type": "object" },
+              "examples": {
+                "renameAndDropField": {
+                  "summary": "Merge patch name and remove field",
+                  "value": {
+                    "name": "Renamed Form",
+                    "schema": {
+                      "properties": {
+                        "deprecatedField": null
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "application/json-patch+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "examples": {
+                "jsonPatchExample": {
+                  "summary": "JSON Patch operations",
+                  "value": [
+                    { "op": "replace", "path": "/name", "value": "New Name" },
+                    { "op": "add", "path": "/schema/properties/age", "value": { "type": "integer" } },
+                    { "op": "remove", "path": "/schema/properties/legacy" }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patched schema",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Schema" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "412": {
+            "description": "Precondition failed (ETag mismatch)",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "415": {
+            "description": "Unsupported patch content-type",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete schema",
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "deleted": { "type": "boolean" } },
+                  "required": ["deleted"]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/schemas/{id}/validate": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "post": {
+        "summary": "Validate data against a stored schema",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result (valid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": { "type": "boolean" },
+                    "errors": { "type": "array", "items": { "type": "object" } }
+                  },
+                  "required": ["valid"]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": { "type": "boolean" },
+                    "errors": { "type": "array", "items": { "type": "object" } }
+                  },
+                  "required": ["valid", "errors"]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/schemas/{id}/fragment": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        },
+        {
+          "name": "pointer",
+          "in": "query",
+          "required": true,
+          "schema": { "type": "string" },
+          "description": "JSON Pointer to select part of the stored schema (e.g., /properties/title)."
+        }
+      ],
+      "get": {
+        "summary": "Fetch a fragment of a schema by JSON Pointer",
+        "responses": {
+          "200": {
+            "description": "Fragment returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pointer": { "type": "string" },
+                    "value": {}
+                  },
+                  "required": ["pointer", "value"]
+                },
+                "examples": {
+                  "fragment": {
+                    "summary": "Fetch title property",
+                    "value": {
+                      "pointer": "/properties/title",
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "namespace": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "schema": { "type": "object", "additionalProperties": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "schema", "createdAt", "updatedAt"]
+      },
+      "NewSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "namespace": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "schema": { "type": "object", "additionalProperties": true }
+        },
+        "required": ["name", "schema"]
+      },
+      "NewSchemaRequiredId": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "namespace": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "schema": { "type": "object", "additionalProperties": true }
+        },
+        "required": ["id", "name", "schema"]
+      },
+      "Suggestion": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "namespace": { "type": "string" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "updatedAt"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "details": { "type": ["object", "null"], "additionalProperties": true }
+        },
+        "required": ["error", "details"]
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+        }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+        }
+      }
+    }
+  }
+}

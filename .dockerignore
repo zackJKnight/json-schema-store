@@ -1,0 +1,13 @@
+node_modules/
+clients/ts-client/node_modules/
+clients/ts-client/dist/
+clients/examples/web-app/node_modules/
+clients/examples/web-app/dist/
+data/
+.git
+.gitignore
+deno_kv.sqlite
+coverage/
+.cache/
+.tmp/
+*.log

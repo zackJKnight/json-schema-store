@@ -1,10 +1,15 @@
 # Deno JSON Schema API
 
-[![Live API](https://img.shields.io/badge/API-deno--api--zk.deno.dev-1e90ff)](https://deno-api-zk.deno.dev)
+[![Live API](https://img.shields.io/badge/API-deno--api--zk.deno.dev-1e90ff)](https://deno-api-zk.deno.dev/docs)
 [![Live Web App](https://img.shields.io/badge/Web%20App-deno--api--web--zk.deno.dev-32cd32)](https://deno-api-web-zk.deno.dev)
 
 Simple Deno HTTP API that stores and serves JSON schemas for a WYSIWYG UI builder using Deno KV for persistence (Deploy-friendly).
 
+## Live Demo
+
+- API: https://deno-api-zk.deno.dev/docs (Swagger UI at `/docs`)
+- Web app: https://deno-api-web-zk.deno.dev (reads from the API above by default)
+- 
 ## Endpoints
 
 - GET /health — health probe
@@ -46,11 +51,6 @@ Sample schemas seed automatically when running the dev task (`SEED_SAMPLES=1`). 
 ```sh
 SEED_SAMPLES=1 deno task start
 ```
-
-## Live Demo
-
-- API: https://deno-api-zk.deno.dev (Swagger UI at `/docs`)
-- Web app: https://deno-api-web-zk.deno.dev (reads from the API above by default)
 
 ## TypeScript client + sample app
 

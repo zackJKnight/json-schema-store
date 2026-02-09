@@ -13,13 +13,17 @@ export type { OpenAPIConfig } from './core/OpenAPI';
 export type { ErrorResponse } from './models/ErrorResponse';
 export type { NewSchema } from './models/NewSchema';
 export type { NewSchemaRequiredId } from './models/NewSchemaRequiredId';
+export type { NewUiSchema } from './models/NewUiSchema';
 export type { Schema } from './models/Schema';
 export type { Suggestion } from './models/Suggestion';
+export type { UiSchema } from './models/UiSchema';
 
 export { $ErrorResponse } from './schemas/$ErrorResponse';
 export { $NewSchema } from './schemas/$NewSchema';
 export { $NewSchemaRequiredId } from './schemas/$NewSchemaRequiredId';
+export { $NewUiSchema } from './schemas/$NewUiSchema';
 export { $Schema } from './schemas/$Schema';
 export { $Suggestion } from './schemas/$Suggestion';
+export { $UiSchema } from './schemas/$UiSchema';
 
 export { DefaultService } from './services/DefaultService';

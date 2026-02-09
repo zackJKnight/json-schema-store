@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@jsonforms/core": "^3.3.0",
+    "@jsonforms/vanilla-renderers": "^3.3.0",
+    "ajv": "^8.17.1",
     "json-schema-store-client": "file:../../ts-client"
   },
   "devDependencies": {

@@ -177,6 +177,70 @@
         }
       }
     },
+    "/ui-schemas": {
+      "get": {
+        "summary": "List UI schemas",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100 }, "required": false },
+          { "name": "cursor", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "required": false },
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "required": false },
+          { "name": "namespace", "in": "query", "schema": { "type": "string" }, "required": false },
+          { "name": "tag", "in": "query", "schema": { "type": "string" }, "required": false },
+          { "name": "schemaId", "in": "query", "schema": { "type": "string" }, "required": false },
+          { "name": "fragment", "in": "query", "schema": { "type": "string" }, "required": false },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["updatedAt", "name"] }, "required": false }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of UI schemas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/UiSchema" } },
+                    "cursor": { "type": ["string", "null"] }
+                  },
+                  "required": ["items", "cursor"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create UI schema",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NewUiSchema" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UiSchema" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/ui-schemas/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": {
+        "summary": "Get UI schema",
+        "responses": {
+          "200": { "description": "UI schema", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UiSchema" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Delete UI schema",
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "deleted": { "type": "boolean" } }, "required": ["deleted"] } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/schemas/{id}": {
       "parameters": [
         {
@@ -322,6 +386,49 @@
         }
       }
     },
+    "/schemas/{id}/ui-schemas": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "summary": "List UI schemas for a schema",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100 }, "required": false },
+          { "name": "cursor", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "required": false },
+          { "name": "fragment", "in": "query", "schema": { "type": "string" }, "required": false }
+        ],
+        "responses": {
+          "200": {
+            "description": "UI schemas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/UiSchema" } },
+                    "cursor": { "type": ["string", "null"] }
+                  },
+                  "required": ["items", "cursor"]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "summary": "Create UI schema for a schema",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NewUiSchema" } } }
+        },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UiSchema" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/schemas/{id}/validate": {
       "parameters": [
         {
@@ -460,6 +567,38 @@
           "schema": { "type": "object", "additionalProperties": true }
         },
         "required": ["id", "name", "schema"]
+      },
+      "UiSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "schemaId": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "fragment": { "type": "string" },
+          "namespace": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "primary": { "type": "boolean", "default": false },
+          "uiSchema": { "type": "object", "additionalProperties": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "schemaId", "name", "uiSchema", "createdAt", "updatedAt"]
+      },
+      "NewUiSchema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "schemaId": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "fragment": { "type": "string" },
+          "namespace": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "primary": { "type": "boolean", "default": false },
+          "uiSchema": { "type": "object", "additionalProperties": true }
+        },
+        "required": ["schemaId", "name", "uiSchema"]
       },
       "Suggestion": {
         "type": "object",

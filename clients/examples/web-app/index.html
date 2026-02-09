@@ -8,14 +8,86 @@
   <body>
     <main>
       <header>
-        <h1>JSON Schema Store Demo</h1>
+        <div>
+          <p class="eyebrow">Live sandbox</p>
+          <h1>JSON Schema Store + UI Schemas</h1>
+          <p class="lede">Browse schemas by namespace/tag, pick a UI schema, and render a JSON Forms layout instantly.</p>
+        </div>
         <div class="controls">
-          <input id="api-base" placeholder="API base (http://localhost:8000)" />
-          <button id="fetch" type="button">Fetch Schemas</button>
+          <input id="api-base" placeholder="API base (https://deno-api-zk.deno.dev)" />
+          <button id="fetch" type="button">Refresh</button>
         </div>
       </header>
-      <div class="status">Status: <span id="status">Idle</span></div>
-      <div id="output" class="grid"></div>
+
+      <section class="filters">
+        <div class="field">
+          <label for="search">Search</label>
+          <input id="search" placeholder="name or description" />
+        </div>
+        <div class="field">
+          <label for="namespace">Namespace</label>
+          <select id="namespace">
+            <option value="">All</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tag">Tag</label>
+          <input id="tag" placeholder="payments, ui, ..." />
+        </div>
+        <div class="field compact">
+          <label>&nbsp;</label>
+          <button id="apply" type="button">Apply Filters</button>
+        </div>
+        <div class="status">Status: <span id="status">Idle</span></div>
+      </section>
+
+      <section class="layout">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Schemas</p>
+              <p class="subtle" id="schema-count">—</p>
+            </div>
+            <div class="chip" id="active-filter">All namespaces</div>
+          </div>
+          <div id="schema-grid" class="grid"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Detail</p>
+              <h2 id="detail-name">Pick a schema</h2>
+              <p class="subtle" id="detail-namespace">—</p>
+            </div>
+            <div class="ui-picker">
+              <label for="ui-schema">UI schema</label>
+              <select id="ui-schema" disabled>
+                <option>None loaded</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="detail-meta" class="meta"></div>
+          <div id="ui-meta" class="meta"></div>
+
+          <div class="form-shell">
+            <div>
+              <div class="form-header">
+                <p class="eyebrow">JSON Forms preview</p>
+                <p class="subtle" id="fragment-note"></p>
+              </div>
+              <div id="form-root" class="form-root"></div>
+            </div>
+            <div>
+              <div class="form-header">
+                <p class="eyebrow">Live data</p>
+              </div>
+              <pre id="data-view">{}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

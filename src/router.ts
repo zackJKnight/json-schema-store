@@ -2,13 +2,15 @@ import * as jsonpatch from "npm:fast-json-patch@3.1.1";
 import openapiSpec from "../openapi.json" with { type: "json" };
 import { HttpError, handleError, jsonResponse } from "./http_error.ts";
 import { SchemaService } from "./schema_service.ts";
+import { UiSchemaService } from "./ui_schema_service.ts";
 import { ensureValidJsonSchema, validateDataAgainstSchema } from "./schema_validation.ts";
-import { parseJsonBody, validateSchemaPayload } from "./validation.ts";
+import { parseJsonBody, validateSchemaPayload, validateUiSchemaPayload } from "./validation.ts";
 
 //
 
 export function createApp(kv: Deno.Kv) {
   const service = new SchemaService(kv);
+  const uiService = new UiSchemaService(kv);
   const corsHeaders = new Headers({
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
@@ -38,6 +40,41 @@ export function createApp(kv: Deno.Kv) {
             "content-type": "text/html; charset=utf-8",
           },
         }), corsHeaders);
+      }
+
+      if (url.pathname === "/ui-schemas" && req.method === "GET") {
+        const limit = parseLimit(url.searchParams.get("limit"));
+        const cursor = parseCursor(url.searchParams.get("cursor"));
+        const schemaId = url.searchParams.get("schemaId")?.trim();
+        const fragment = url.searchParams.get("fragment")?.trim();
+        const namespace = url.searchParams.get("namespace")?.trim();
+        const tag = url.searchParams.get("tag")?.trim();
+        const q = url.searchParams.get("q")?.trim();
+        const sort = parseSort(url.searchParams.get("sort"));
+        const result = await uiService.list(limit, cursor, {
+          schemaId: schemaId || undefined,
+          fragment: fragment || undefined,
+          namespace: namespace || undefined,
+          tag: tag || undefined,
+          q: q || undefined,
+          sort,
+        });
+        return withCors(jsonResponse(result), corsHeaders);
+      }
+
+      if (url.pathname === "/ui-schemas" && req.method === "POST") {
+        enforceJson(req);
+        const body = await parseJsonBody(req);
+        const payload = validateUiSchemaPayload(body, { allowClientId: true });
+        const schema = await service.get(payload.schemaId);
+        if (!schema) throw new HttpError(404, "Schema not found", { schemaId: payload.schemaId });
+        if (payload.fragment) {
+          const value = getByPointer(schema.schema, payload.fragment);
+          if (value === undefined) throw new HttpError(400, "fragment not found on schema", { fragment: payload.fragment });
+        }
+        const id = payload.id ?? crypto.randomUUID();
+        const saved = await uiService.upsert({ ...payload, id });
+        return withCors(jsonResponse(saved, 201), corsHeaders);
       }
 
       if (url.pathname === "/namespaces" && req.method === "GET") {
@@ -79,8 +116,54 @@ export function createApp(kv: Deno.Kv) {
       }
 
       const parts = url.pathname.split("/").filter(Boolean);
+
+      if (parts[0] === "ui-schemas" && parts[1] && !parts[2]) {
+        const uiId = decodeURIComponent(parts[1]);
+
+        if (req.method === "GET") {
+          const found = await uiService.get(uiId);
+          if (!found) throw new HttpError(404, "UI schema not found", { id: uiId });
+          return withCors(jsonResponse(found), corsHeaders);
+        }
+
+        if (req.method === "DELETE") {
+          const removed = await uiService.remove(uiId);
+          if (!removed) throw new HttpError(404, "UI schema not found", { id: uiId });
+          return withCors(jsonResponse({ deleted: true }), corsHeaders);
+        }
+      }
+
       if (parts[0] === "schemas" && parts[1]) {
         const id = decodeURIComponent(parts[1]);
+
+        if (parts[2] === "ui-schemas") {
+          const limit = parseLimit(url.searchParams.get("limit"));
+          const cursor = parseCursor(url.searchParams.get("cursor"));
+          const fragment = url.searchParams.get("fragment")?.trim();
+
+          if (req.method === "GET") {
+            const result = await uiService.list(limit, cursor, { schemaId: id, fragment: fragment || undefined });
+            return withCors(jsonResponse(result), corsHeaders);
+          }
+
+          if (req.method === "POST") {
+            enforceJson(req);
+            const body = await parseJsonBody(req);
+            const withSchemaId = (typeof body === "object" && body !== null)
+              ? { ...(body as Record<string, unknown>), schemaId: (body as Record<string, unknown>).schemaId ?? id }
+              : body;
+            const payload = validateUiSchemaPayload(withSchemaId, { allowClientId: true });
+            const schema = await service.get(id);
+            if (!schema) throw new HttpError(404, "Schema not found", { id });
+            const frag = payload.fragment ?? fragment ?? undefined;
+            if (frag) {
+              const value = getByPointer(schema.schema, frag);
+              if (value === undefined) throw new HttpError(400, "fragment not found on schema", { fragment: frag });
+            }
+            const saved = await uiService.upsert({ ...payload, schemaId: id, fragment: frag, id: payload.id ?? crypto.randomUUID() });
+            return withCors(jsonResponse(saved, 201), corsHeaders);
+          }
+        }
 
         if (req.method === "GET" && parts[2] === "fragment") {
           const schema = await service.get(id);

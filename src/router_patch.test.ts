@@ -7,9 +7,8 @@ function json(body: unknown): string {
 
 async function openCleanKv() {
   const kv = await Deno.openKv();
-  for await (const entry of kv.list({ prefix: ["schema"] })) {
-    await kv.delete(entry.key);
-  }
+  for await (const entry of kv.list({ prefix: ["schema"] })) await kv.delete(entry.key);
+  for await (const entry of kv.list({ prefix: ["ui-schema"] })) await kv.delete(entry.key);
   return kv;
 }
 
@@ -147,6 +146,35 @@ Deno.test("Suggest endpoint returns matches", async () => {
   assertEquals(suggestRes.status, 200);
   const suggestions = await suggestRes.json();
   assertEquals(suggestions.items[0].id, "searchable");
+
+  kv.close();
+});
+
+Deno.test("UI schemas can be created and listed", async () => {
+  const kv = await openCleanKv();
+  const handler = createApp(kv);
+
+  await handler(new Request("http://localhost/schemas", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: json({ id: "product", name: "Product", schema: { type: "object", properties: { name: { type: "string" } } } }),
+  }));
+
+  const createUi = await handler(new Request("http://localhost/schemas/product/ui-schemas", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: json({ name: "Product form", uiSchema: { type: "VerticalLayout", elements: [{ type: "Control", scope: "#/properties/name" }] } }),
+  }));
+  assertEquals(createUi.status, 201);
+  const created = await createUi.json();
+
+  const listBySchema = await handler(new Request("http://localhost/schemas/product/ui-schemas"));
+  assertEquals(listBySchema.status, 200);
+  const listed = await listBySchema.json();
+  assertEquals(listed.items.length, 1);
+
+  const fetchOne = await handler(new Request(`http://localhost/ui-schemas/${created.id}`));
+  assertEquals(fetchOne.status, 200);
 
   kv.close();
 });

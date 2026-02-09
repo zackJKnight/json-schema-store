@@ -4,8 +4,10 @@
 /* eslint-disable */
 import type { NewSchema } from '../models/NewSchema';
 import type { NewSchemaRequiredId } from '../models/NewSchemaRequiredId';
+import type { NewUiSchema } from '../models/NewUiSchema';
 import type { Schema } from '../models/Schema';
 import type { Suggestion } from '../models/Suggestion';
+import type { UiSchema } from '../models/UiSchema';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class DefaultService {
@@ -127,6 +129,113 @@ export class DefaultService {
     });
   }
   /**
+   * List UI schemas
+   * @returns any List of UI schemas
+   * @throws ApiError
+   */
+  public getUiSchemas({
+    limit,
+    cursor,
+    q,
+    namespace,
+    tag,
+    schemaId,
+    fragment,
+    sort,
+  }: {
+    limit?: number,
+    cursor?: number,
+    q?: string,
+    namespace?: string,
+    tag?: string,
+    schemaId?: string,
+    fragment?: string,
+    sort?: 'updatedAt' | 'name',
+  }): CancelablePromise<{
+    items: Array<UiSchema>;
+    cursor: string | null;
+  }> {
+    return this.httpRequest.request({
+      method: 'GET',
+      url: '/ui-schemas',
+      query: {
+        'limit': limit,
+        'cursor': cursor,
+        'q': q,
+        'namespace': namespace,
+        'tag': tag,
+        'schemaId': schemaId,
+        'fragment': fragment,
+        'sort': sort,
+      },
+    });
+  }
+  /**
+   * Create UI schema
+   * @returns UiSchema Created
+   * @throws ApiError
+   */
+  public postUiSchemas({
+    requestBody,
+  }: {
+    requestBody: NewUiSchema,
+  }): CancelablePromise<UiSchema> {
+    return this.httpRequest.request({
+      method: 'POST',
+      url: '/ui-schemas',
+      body: requestBody,
+      mediaType: 'application/json',
+      errors: {
+        400: `Bad request`,
+        404: `Not found`,
+      },
+    });
+  }
+  /**
+   * Get UI schema
+   * @returns UiSchema UI schema
+   * @throws ApiError
+   */
+  public getUiSchemas1({
+    id,
+  }: {
+    id: string,
+  }): CancelablePromise<UiSchema> {
+    return this.httpRequest.request({
+      method: 'GET',
+      url: '/ui-schemas/{id}',
+      path: {
+        'id': id,
+      },
+      errors: {
+        404: `Not found`,
+      },
+    });
+  }
+  /**
+   * Delete UI schema
+   * @returns any Deleted
+   * @throws ApiError
+   */
+  public deleteUiSchemas({
+    id,
+  }: {
+    id: string,
+  }): CancelablePromise<{
+    deleted: boolean;
+  }> {
+    return this.httpRequest.request({
+      method: 'DELETE',
+      url: '/ui-schemas/{id}',
+      path: {
+        'id': id,
+      },
+      errors: {
+        404: `Not found`,
+      },
+    });
+  }
+  /**
    * Get schema
    * @returns Schema Schema
    * @throws ApiError
@@ -227,6 +336,67 @@ export class DefaultService {
         'id': id,
       },
       errors: {
+        404: `Not found`,
+      },
+    });
+  }
+  /**
+   * List UI schemas for a schema
+   * @returns any UI schemas
+   * @throws ApiError
+   */
+  public getSchemasUiSchemas({
+    id,
+    limit,
+    cursor,
+    fragment,
+  }: {
+    id: string,
+    limit?: number,
+    cursor?: number,
+    fragment?: string,
+  }): CancelablePromise<{
+    items: Array<UiSchema>;
+    cursor: string | null;
+  }> {
+    return this.httpRequest.request({
+      method: 'GET',
+      url: '/schemas/{id}/ui-schemas',
+      path: {
+        'id': id,
+      },
+      query: {
+        'limit': limit,
+        'cursor': cursor,
+        'fragment': fragment,
+      },
+      errors: {
+        404: `Not found`,
+      },
+    });
+  }
+  /**
+   * Create UI schema for a schema
+   * @returns UiSchema Created
+   * @throws ApiError
+   */
+  public postSchemasUiSchemas({
+    id,
+    requestBody,
+  }: {
+    id: string,
+    requestBody: NewUiSchema,
+  }): CancelablePromise<UiSchema> {
+    return this.httpRequest.request({
+      method: 'POST',
+      url: '/schemas/{id}/ui-schemas',
+      path: {
+        'id': id,
+      },
+      body: requestBody,
+      mediaType: 'application/json',
+      errors: {
+        400: `Bad request`,
         404: `Not found`,
       },
     });

@@ -20,6 +20,12 @@ Simple Deno HTTP API that stores and serves JSON schemas for a WYSIWYG UI builde
 - GET /schemas/:id/fragment?pointer=/... — return a JSON Pointer fragment of the stored schema (pointer is relative to the schema root, e.g., /properties/title)
 - GET /schemas/suggest?q=... — lightweight search suggestions (limit optional)
 - GET /namespaces — list distinct namespaces present in stored schemas
+- GET /ui-schemas?limit=20&cursor=...&q=...&namespace=...&tag=...&schemaId=...&fragment=...&sort=name|updatedAt — list UI schemas with filters
+- POST /ui-schemas — create a UI schema (body: { id?, schemaId, name, description?, fragment?, namespace?, tags?, uiSchema })
+- GET /ui-schemas/:id — fetch one UI schema
+- DELETE /ui-schemas/:id — remove a UI schema
+- GET /schemas/:id/ui-schemas?fragment=... — list UI schemas for a specific schema (optionally scoped to a fragment)
+- POST /schemas/:id/ui-schemas — create a UI schema scoped to a schema id (fragment may be provided in body or query)
 
 Responses are JSON. Errors return `{ "error": string, "details": object | null }`.
 
